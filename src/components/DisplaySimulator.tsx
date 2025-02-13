@@ -25,7 +25,17 @@ export const DisplaySimulator = () => {
           variant: anomaly.severity === 'high' ? 'destructive' : 'default',
         });
         
-        // Clear anomaly indicator after 3 seconds
+        // Emit anomaly event
+        window.dispatchEvent(new CustomEvent('anomaly-detected', {
+          detail: {
+            timestamp: anomaly.timestamp,
+            position: anomaly.position,
+            value: displayValues[Math.floor(anomaly.position / DIGITS_PER_GROUP)]?.[anomaly.position % DIGITS_PER_GROUP],
+            type: 'anomaly',
+            description: anomaly.description
+          }
+        }));
+        
         setTimeout(() => {
           setAnomalies(prev => {
             const next = new Set(prev);
@@ -35,7 +45,7 @@ export const DisplaySimulator = () => {
         }, 3000);
       }
     });
-  }, [toast]);
+  }, [toast, displayValues]);
 
   const generateRandomDigit = useCallback(() => {
     return Math.floor(Math.random() * 10);
@@ -48,6 +58,16 @@ export const DisplaySimulator = () => {
     const position = groupIndex * DIGITS_PER_GROUP + digitIndex;
 
     detectorRef.current?.addChange(position, newValue);
+
+    // Emit number update event
+    window.dispatchEvent(new CustomEvent('number-update', {
+      detail: {
+        timestamp: Date.now(),
+        position,
+        value: newValue,
+        type: 'normal'
+      }
+    }));
 
     setDisplayValues((prev) =>
       prev.map((group, gIdx) =>
