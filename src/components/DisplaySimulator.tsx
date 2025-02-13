@@ -3,17 +3,21 @@ import { useCallback, useEffect, useState, useRef } from "react";
 import { DisplayGroup } from "./DisplayGroup";
 import { AnomalyDetector, AnomalyReport } from "@/utils/anomalyDetector";
 import { useToast } from "@/components/ui/use-toast";
+import { Button } from "@/components/ui/button";
+import { Play, Pause } from "lucide-react";
 
 const TOTAL_GROUPS = 3;
 const DIGITS_PER_GROUP = 4;
 
 export const DisplaySimulator = () => {
   const { toast } = useToast();
+  const [isRunning, setIsRunning] = useState(false);
   const [displayValues, setDisplayValues] = useState<number[][]>(
     Array(TOTAL_GROUPS).fill(Array(DIGITS_PER_GROUP).fill(0))
   );
   const [anomalies, setAnomalies] = useState<Set<number>>(new Set());
   const detectorRef = useRef<AnomalyDetector>();
+  const intervalRef = useRef<number>();
 
   useEffect(() => {
     detectorRef.current = new AnomalyDetector((anomaly: AnomalyReport) => {
@@ -80,13 +84,59 @@ export const DisplaySimulator = () => {
     );
   }, [generateRandomDigit]);
 
+  const toggleSimulation = useCallback(() => {
+    setIsRunning(prev => {
+      if (!prev) {
+        // Starting
+        intervalRef.current = window.setInterval(updateRandomDigit, 1000);
+        toast({
+          title: "Simulation Started",
+          description: "Number generation process has begun",
+        });
+      } else {
+        // Stopping
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+        }
+        toast({
+          title: "Simulation Paused",
+          description: "Number generation process has been paused",
+        });
+      }
+      return !prev;
+    });
+  }, [updateRandomDigit, toast]);
+
+  // Cleanup on unmount
   useEffect(() => {
-    const interval = setInterval(updateRandomDigit, 1000);
-    return () => clearInterval(interval);
-  }, [updateRandomDigit]);
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div className="flex flex-col space-y-8 p-8">
+      <div className="flex justify-center mb-4">
+        <Button
+          onClick={toggleSimulation}
+          className={`w-32 ${isRunning ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'}`}
+        >
+          {isRunning ? (
+            <>
+              <Pause className="mr-2 h-4 w-4" />
+              Stop
+            </>
+          ) : (
+            <>
+              <Play className="mr-2 h-4 w-4" />
+              Start
+            </>
+          )}
+        </Button>
+      </div>
+
       {displayValues.map((group, groupIndex) => (
         <DisplayGroup
           key={groupIndex}
